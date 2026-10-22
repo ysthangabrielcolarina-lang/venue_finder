@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             AmenitySeeder::class,
             UserSeeder::class,
             VenueSeeder::class,
+            RolesSeeder::class, // last: the tables exist by now
         ]);
     }
 }

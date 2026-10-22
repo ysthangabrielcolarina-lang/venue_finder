@@ -61,4 +61,35 @@ class User extends Authenticatable
     {
         return $this->hasMany(Reservation::class);
     }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isOwner(): bool
+    {
+        return $this->role === 'owner';
+    }
+
+    public function isCustomer(): bool
+    {
+        return $this->role === 'customer';
+    }
+
+    // Owners and admins manage venues and reservations.
+    public function isStaff(): bool
+    {
+        return $this->isOwner() || $this->isAdmin();
+    }
+
+    // The name shown for the role on the menu bar and the dashboard.
+    public function roleLabel(): string
+    {
+        return match ($this->role) {
+            'owner' => 'Venue owner',
+            'admin' => 'Admin',
+            default => 'Customer',
+        };
+    }
 }

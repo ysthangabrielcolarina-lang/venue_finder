@@ -1,14 +1,12 @@
 <x-layouts.public title="Reservations">
-    <h1 class="text-2xl font-semibold mb-4">
-        {{ auth()->user()->role === 'customer' ? 'My reservations' : 'Reservations' }}
-    </h1>
+    <h1 class="text-2xl font-semibold mb-4">{{ $title }}</h1>
 
     <div class="bg-white rounded shadow overflow-x-auto">
         <table class="min-w-full text-sm">
             <thead class="bg-gray-50 text-left">
                 <tr>
                     <th class="px-4 py-2">Venue</th>
-                    @if (auth()->user()->role !== 'customer')
+                    @if ($showCustomer)
                         <th class="px-4 py-2">Customer</th>
                     @endif
                     <th class="px-4 py-2">Dates</th>
@@ -22,7 +20,7 @@
                         <td class="px-4 py-2">
                             <a href="{{ route('reservations.show', $reservation) }}" class="text-indigo-700 underline">{{ $reservation->venue->name }}</a>
                         </td>
-                        @if (auth()->user()->role !== 'customer')
+                        @if ($showCustomer)
                             <td class="px-4 py-2">{{ $reservation->user->name }}</td>
                         @endif
                         <td class="px-4 py-2">
@@ -35,7 +33,7 @@
                         <td class="px-4 py-2">@include('reservations._status', ['status' => $reservation->status])</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-4 py-6 text-center text-gray-500">No reservations yet.</td></tr>
+                    <tr><td colspan="{{ $showCustomer ? 5 : 4 }}" class="px-4 py-6 text-center text-gray-500">No reservations yet.</td></tr>
                 @endforelse
             </tbody>
         </table>

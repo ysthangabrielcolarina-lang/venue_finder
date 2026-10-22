@@ -26,8 +26,8 @@ return new class extends Migration
 
         DB::statement("ALTER TABLE reservations ADD CONSTRAINT chk_reservation_status
             CHECK (status IN ('pending','confirmed','rejected','cancelled','expired'))");
-        DB::statement("ALTER TABLE reservations ADD CONSTRAINT chk_reservation_dates
-            CHECK (end_date >= start_date)");
+        DB::statement('ALTER TABLE reservations ADD CONSTRAINT chk_reservation_dates
+            CHECK (end_date >= start_date)');
     }
 
     public function down(): void

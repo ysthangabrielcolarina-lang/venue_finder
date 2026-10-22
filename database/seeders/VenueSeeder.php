@@ -12,17 +12,16 @@ class VenueSeeder extends Seeder
 {
     public function run(): void
     {
-        $owner = User::where('email', 'owner@example.com')->firstOrFail();
-
-        // TODO: SAMPLE LANG TOH 
+        // TODO: replace these sample rows with your real venues.
+        // Every venue has a participating owner, matched by the owner's email.
         $venues = [
             [
                 'barangay' => 'Dayap', 'name' => 'Sample Venue A',
                 'address' => 'Replace with real address', 'capacity' => 100,
                 'base_price' => 15000, 'down_payment' => 5000,
-                'gcash_number' => '09000000000',
+                'gcash_number' => '09000000001',
                 'amenities' => ['Parking', 'Videoke', 'Restrooms'],
-                'has_owner' => true,
+                'owner' => 'owner@example.com',
             ],
             [
                 'barangay' => 'Lamot 1', 'name' => 'Sample Venue B',
@@ -30,15 +29,15 @@ class VenueSeeder extends Seeder
                 'base_price' => 8000, 'down_payment' => 0,
                 'gcash_number' => null,
                 'amenities' => ['Tables and chairs', 'Restrooms'],
-                'has_owner' => false,
+                'owner' => 'owner2@example.com',
             ],
             [
                 'barangay' => 'Mabacan', 'name' => 'Sample Venue C',
                 'address' => 'Replace with real address', 'capacity' => 200,
                 'base_price' => 30000, 'down_payment' => 10000,
-                'gcash_number' => null,
+                'gcash_number' => '09000000002',
                 'amenities' => ['Air conditioning', 'Parking', 'Sound system', 'Kitchen'],
-                'has_owner' => false,
+                'owner' => 'owner2@example.com',
             ],
         ];
 
@@ -57,11 +56,8 @@ class VenueSeeder extends Seeder
                 Amenity::whereIn('name', $data['amenities'])->pluck('id')
             );
 
-            // Only venues with a participating owner get linked to one.
-            // The others stay information-only, as in your plan.
-            if ($data['has_owner']) {
-                $venue->owners()->attach($owner->id);
-            }
+            $owner = User::where('email', $data['owner'])->firstOrFail();
+            $venue->owners()->attach($owner->id);
         }
     }
 }

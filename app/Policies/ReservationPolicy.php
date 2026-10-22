@@ -21,6 +21,15 @@ class ReservationPolicy
         return $user->role === 'admin' || $this->ownsVenue($user, $reservation);
     }
 
+    // Edit: only the customer who made it, while it is pending and the 24-hour hold is still running.
+    public function update(User $user, Reservation $reservation): bool
+    {
+        return $reservation->user_id === $user->id
+            && $reservation->status === 'pending'
+            && $reservation->expires_at !== null
+            && $reservation->expires_at->isFuture();
+    }
+
     // Cancel: only the customer who made it, while it is pending or confirmed.
     public function cancel(User $user, Reservation $reservation): bool
     {

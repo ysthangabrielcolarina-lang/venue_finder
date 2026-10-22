@@ -1,17 +1,16 @@
 <?php
 
+use App\Http\Controllers\AdminAreaController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OwnerAreaController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\VenueController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [VenueController::class, 'index'])->name('home');
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -28,10 +27,12 @@ Route::middleware(['auth', 'role:owner,admin'])->group(function () {
 // Anyone can browse.
 Route::resource('venues', VenueController::class)->only(['index', 'show']);
 
-// Reservations: only customers can make one.
+// Reservations: only customers can make or edit one.
 Route::middleware(['auth', 'role:customer'])->group(function () {
     Route::get('/venues/{venue}/reserve', [ReservationController::class, 'create'])->name('reservations.create');
     Route::post('/venues/{venue}/reservations', [ReservationController::class, 'store'])->name('reservations.store');
+    Route::get('/reservations/{reservation}/edit', [ReservationController::class, 'edit'])->name('reservations.edit');
+    Route::put('/reservations/{reservation}', [ReservationController::class, 'update'])->name('reservations.update');
 });
 
 // Everyone logged in can reach these. The ReservationPolicy decides who may do what.
@@ -46,11 +47,11 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/', fn () => 'Admin area')->name('admin.index');
+    Route::get('/', AdminAreaController::class)->name('admin.index');
 });
 
 Route::middleware(['auth', 'role:owner'])->prefix('owner')->group(function () {
-    Route::get('/', fn () => 'Owner area')->name('owner.index');
+    Route::get('/', OwnerAreaController::class)->name('owner.index');
 });
 
 require __DIR__.'/auth.php';

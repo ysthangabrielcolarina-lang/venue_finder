@@ -28,6 +28,14 @@ class UserSeeder extends Seeder
         ]);
 
         User::forceCreate([
+            'name' => 'Second Owner',
+            'email' => 'owner2@example.com',
+            'password' => 'password',
+            'role' => 'owner',
+            'is_approved' => true,
+        ]);
+
+        User::forceCreate([
             'name' => 'Sample Customer',
             'email' => 'customer@example.com',
             'password' => 'password',

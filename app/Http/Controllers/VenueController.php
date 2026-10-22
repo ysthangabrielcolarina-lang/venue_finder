@@ -6,20 +6,53 @@ use App\Http\Requests\VenueRequest;
 use App\Models\Amenity;
 use App\Models\Barangay;
 use App\Models\Venue;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
 class VenueController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $venues = Venue::with('barangay')->withCount('owners')->orderBy('name')->paginate(10);
+        $filters = [
+            'q' => $request->string('q')->trim()->toString(),
+            'barangay' => $request->string('barangay')->toString(),
+            'guests' => $request->string('guests')->toString(),
+            'max_price' => $request->string('max_price')->toString(),
+        ];
 
-        return view('venues.index', compact('venues'));
+        $sorts = [
+            'name' => ['name', 'asc'],
+            'price_low' => ['base_price', 'asc'],
+            'price_high' => ['base_price', 'desc'],
+            'capacity' => ['capacity', 'desc'],
+        ];
+
+        $sort = $request->string('sort')->toString();
+        if (! array_key_exists($sort, $sorts)) {
+            $sort = 'name';
+        }
+        [$column, $direction] = $sorts[$sort];
+
+        // withCount('owners') adds an owners_count number to each venue in one query.
+        // The list uses it to decide which venues can be reserved.
+        $venues = Venue::with('barangay')
+            ->withCount('owners')
+            ->search($filters)
+            ->orderBy($column, $direction)
+            ->paginate(9)
+            ->withQueryString();
+
+        return view('venues.index', [
+            'venues' => $venues,
+            'filters' => $filters,
+            'sort' => $sort,
+            'barangays' => Barangay::orderBy('name')->get(),
+        ]);
     }
 
     public function show(Venue $venue)
     {
-        $venue->load(['barangay', 'amenities']);
+        $venue->load(['barangay', 'amenities'])->loadCount('owners');
 
         return view('venues.show', compact('venue'));
     }
@@ -57,7 +90,7 @@ class VenueController extends Controller
         Gate::authorize('update', $venue);
 
         return view('venues.edit', [
-            'venue'     => $venue->load('amenities'),
+            'venue' => $venue->load('amenities'),
             'barangays' => Barangay::orderBy('name')->get(),
             'amenities' => Amenity::orderBy('name')->get(),
         ]);

@@ -36,26 +36,30 @@
                 @if ($reservation->status === 'pending')
                     <form method="POST" action="{{ route('reservations.confirm', $reservation) }}">
                         @csrf @method('PATCH')
-                        <button class="bg-green-600 text-white px-4 py-2 rounded">Confirm</button>
+                        <x-btn variant="success">Confirm</x-btn>
                     </form>
                     <form method="POST" action="{{ route('reservations.reject', $reservation) }}">
                         @csrf @method('PATCH')
-                        <button class="bg-red-600 text-white px-4 py-2 rounded">Reject</button>
+                        <x-btn variant="danger">Reject</x-btn>
                     </form>
                 @endif
+            @endcan
+
+            @can('update', $reservation)
+                <x-btn :href="route('reservations.edit', $reservation)">Edit request</x-btn>
             @endcan
 
             @can('cancel', $reservation)
                 <form method="POST" action="{{ route('reservations.cancel', $reservation) }}" onsubmit="return confirm('Cancel this reservation?')">
                     @csrf @method('PATCH')
-                    <button class="bg-gray-600 text-white px-4 py-2 rounded">Cancel reservation</button>
+                    <x-btn variant="secondary">Cancel reservation</x-btn>
                 </form>
             @endcan
 
             @can('delete', $reservation)
                 <form method="POST" action="{{ route('reservations.destroy', $reservation) }}" onsubmit="return confirm('Delete this reservation?')">
                     @csrf @method('DELETE')
-                    <button class="border border-red-600 text-red-600 px-4 py-2 rounded">Delete</button>
+                    <x-btn variant="danger">Delete</x-btn>
                 </form>
             @endcan
         </div>

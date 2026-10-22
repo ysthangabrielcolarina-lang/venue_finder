@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class Reservation extends Model
 {
@@ -17,7 +17,7 @@ class Reservation extends Model
 
     protected $casts = [
         'start_date' => 'date',
-        'end_date'   => 'date',
+        'end_date' => 'date',
         'expires_at' => 'datetime',
     ];
 
@@ -39,21 +39,16 @@ class Reservation extends Model
             ->update(['status' => 'expired']);
     }
 
-    // Reservations that currently block a date: confirmed, or pending and still on hold.
-    public function scopeBlocking(Builder $query): Builder
+    // Asks the database whether the dates clash with a confirmed booking or a pending hold.
+    // It uses a database function, because row-level security hides other people's reservations
+    // from a normal query, and the function returns only yes or no.
+    public static function datesTaken(int $venueId, string $start, string $end, ?int $exceptId = null): bool
     {
-        return $query->where(function ($q) {
-            $q->where('status', 'confirmed')
-              ->orWhere(function ($q) {
-                  $q->where('status', 'pending')->where('expires_at', '>', now());
-              });
-        });
-    }
+        $row = DB::selectOne(
+            'select dates_are_taken(?::bigint, ?::date, ?::date, ?::bigint) as taken',
+            [$venueId, $start, $end, $exceptId]
+        );
 
-    // Two date ranges overlap when each one starts before the other ends.
-    public function scopeOverlapping(Builder $query, $start, $end): Builder
-    {
-        return $query->where('start_date', '<=', $end)
-                     ->where('end_date', '>=', $start);
+        return (bool) $row->taken;
     }
 }

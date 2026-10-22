@@ -15,15 +15,15 @@ class VenueRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'barangay_id'  => ['required', 'exists:barangays,id'],
-            'name'         => ['required', 'string', 'max:255'],
-            'address'      => ['nullable', 'string', 'max:255'],
-            'capacity'     => ['required', 'integer', 'min:1', 'max:5000'],
-            'base_price'   => ['required', 'numeric', 'min:0'],
+            'barangay_id' => ['required', 'exists:barangays,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'capacity' => ['required', 'integer', 'min:1', 'max:5000'],
+            'base_price' => ['required', 'numeric', 'min:0'],
             'down_payment' => ['required', 'numeric', 'min:0', 'lte:base_price'],
             'gcash_number' => ['nullable', 'regex:/^09\d{9}$/'],
-            'amenities'    => ['nullable', 'array'],
-            'amenities.*'  => ['exists:amenities,id'],
+            'amenities' => ['nullable', 'array'],
+            'amenities.*' => ['exists:amenities,id'],
         ];
     }
 

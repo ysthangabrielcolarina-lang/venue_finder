@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreReservationRequest;
+use App\Http\Requests\UpdateReservationRequest;
 use App\Models\Reservation;
 use App\Models\Venue;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -29,6 +31,12 @@ class ReservationController extends Controller
 
         return view('reservations.index', [
             'reservations' => $query->paginate(10),
+            'title' => match ($user->role) {
+                'owner' => 'Reservation requests',
+                'admin' => 'All reservations',
+                default => 'My reservations',
+            },
+            'showCustomer' => ! $user->isCustomer(),
         ]);
     }
 
@@ -47,39 +55,47 @@ class ReservationController extends Controller
         $data = $request->validated();
         $reservation = null;
 
-        DB::transaction(function () use ($request, $venue, $data, &$reservation) {
-            // Lock this venue's row so two customers can't book the same dates at once.
-            Venue::whereKey($venue->id)->lockForUpdate()->first();
+        try {
+            DB::transaction(function () use ($request, $venue, $data, &$reservation) {
+                // Lock this venue's row so two customers can't book the same dates at once.
+                Venue::whereKey($venue->id)->lockForUpdate()->first();
 
-            $taken = Reservation::where('venue_id', $venue->id)
-                ->blocking()
-                ->overlapping($data['start_date'], $data['end_date'])
-                ->exists();
+                $taken = Reservation::datesTaken($venue->id, $data['start_date'], $data['end_date']);
 
-            if ($taken) {
+                if ($taken) {
+                    throw ValidationException::withMessages([
+                        'start_date' => 'Those dates are already booked or on hold. Please pick other dates.',
+                    ]);
+                }
+
+                // Only safe fields are mass assigned. The system sets everything else.
+                $reservation = new Reservation([
+                    'start_date' => $data['start_date'],
+                    'end_date' => $data['end_date'],
+                    'guest_count' => $data['guest_count'],
+                ]);
+                $reservation->venue_id = $venue->id;
+                $reservation->user_id = $request->user()->id;
+                $reservation->status = 'pending';
+                $reservation->expires_at = now()->addDay();
+
+                if ($request->hasFile('receipt')) {
+                    // Stored on the private disk: not reachable by a public URL.
+                    $reservation->receipt_path = $request->file('receipt')->store('receipts');
+                }
+
+                $reservation->save();
+            });
+        } catch (QueryException $e) {
+            // The database trigger is the last line of defense.
+            if (str_contains($e->getMessage(), 'Venue already booked')) {
                 throw ValidationException::withMessages([
                     'start_date' => 'Those dates are already booked or on hold. Please pick other dates.',
                 ]);
             }
 
-            // Only safe fields are mass assigned. The system sets everything else.
-            $reservation = new Reservation([
-                'start_date'  => $data['start_date'],
-                'end_date'    => $data['end_date'],
-                'guest_count' => $data['guest_count'],
-            ]);
-            $reservation->venue_id   = $venue->id;
-            $reservation->user_id    = $request->user()->id;
-            $reservation->status     = 'pending';
-            $reservation->expires_at = now()->addDay();
-
-            if ($request->hasFile('receipt')) {
-                // Stored on the private disk: not reachable by a public URL.
-                $reservation->receipt_path = $request->file('receipt')->store('receipts');
-            }
-
-            $reservation->save();
-        });
+            throw $e;
+        }
 
         return redirect()->route('reservations.show', $reservation)
             ->with('status', 'Request sent. The dates are held for 24 hours while the owner reviews it.');
@@ -93,6 +109,88 @@ class ReservationController extends Controller
         $reservation->refresh()->load(['venue.barangay', 'user']);
 
         return view('reservations.show', compact('reservation'));
+    }
+
+    // The edit form: only for the customer's own pending request.
+    public function edit(Reservation $reservation)
+    {
+        Reservation::expireStale();
+        $reservation->refresh(); // pick up an expiry that just happened
+
+        Gate::authorize('update', $reservation);
+
+        $reservation->load('venue');
+
+        return view('reservations.edit', compact('reservation'));
+    }
+
+    public function update(UpdateReservationRequest $request, Reservation $reservation)
+    {
+        $data = $request->validated();
+        $venue = $reservation->venue;
+
+        $oldReceipt = $reservation->receipt_path;
+        $newReceipt = null;
+
+        try {
+            DB::transaction(function () use ($request, $reservation, $venue, $data, &$newReceipt) {
+                // Same lock as a new request, so two people can't take the same dates at once.
+                Venue::whereKey($venue->id)->lockForUpdate()->first();
+
+                // The owner may have confirmed or rejected it while the form was open.
+                $reservation->refresh();
+                if ($reservation->status !== 'pending') {
+                    throw ValidationException::withMessages([
+                        'start_date' => 'This request can no longer be edited.',
+                    ]);
+                }
+
+                // Same overlap check as a new request, ignoring this reservation itself.
+                $taken = Reservation::datesTaken($venue->id, $data['start_date'], $data['end_date'], $reservation->id);
+
+                if ($taken) {
+                    throw ValidationException::withMessages([
+                        'start_date' => 'Those dates are already booked or on hold. Please pick other dates.',
+                    ]);
+                }
+
+                // Only these three fields are filled. status and expires_at are never touched,
+                // so the 24-hour hold does not restart when someone edits.
+                $reservation->fill([
+                    'start_date' => $data['start_date'],
+                    'end_date' => $data['end_date'],
+                    'guest_count' => $data['guest_count'],
+                ]);
+
+                if ($request->hasFile('receipt')) {
+                    $newReceipt = $request->file('receipt')->store('receipts');
+                    $reservation->receipt_path = $newReceipt;
+                }
+
+                $reservation->save();
+            });
+        } catch (QueryException $e) {
+            // The database trigger is the last line of defense.
+            if ($newReceipt) {
+                Storage::delete($newReceipt);
+            }
+
+            if (str_contains($e->getMessage(), 'Venue already booked')) {
+                throw ValidationException::withMessages([
+                    'start_date' => 'Those dates are already booked or on hold. Please pick other dates.',
+                ]);
+            }
+
+            throw $e;
+        }
+
+        // The old receipt is removed only after the new one is saved.
+        if ($newReceipt && $oldReceipt) {
+            Storage::delete($oldReceipt);
+        }
+
+        return redirect()->route('reservations.show', $reservation)
+            ->with('status', 'Reservation updated.');
     }
 
     public function confirm(Reservation $reservation)
@@ -150,16 +248,26 @@ class ReservationController extends Controller
 
         $reservation->status = $newStatus;
         $reservation->expires_at = null;
-        $reservation->save();
+
+        try {
+            $reservation->save();
+        } catch (QueryException $e) {
+            // Confirming can hit the trigger if another booking took the dates first.
+            if (str_contains($e->getMessage(), 'Venue already booked')) {
+                return back()->withErrors(['status' => 'Another booking already holds these dates, so this request cannot be '.$newStatus.'.']);
+            }
+
+            throw $e;
+        }
 
         return back()->with('status', $message);
     }
 
-    // Venues without a participating owner stay information-only.
+    // A venue can be reserved online only when it has a participating owner.
     private function ensureReservable(Venue $venue): void
     {
         abort_unless(
-            $venue->owners()->exists(),
+            $venue->isReservable(),
             403,
             'This venue is information-only and cannot be reserved online.'
         );
