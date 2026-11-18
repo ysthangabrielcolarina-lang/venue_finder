@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
         // Prepare the menu data in a class, so the Blade file only displays it.
         View::composer('partials.role-nav', NavigationComposer::class);
 
-        // Row-level security: the moment Laravel knows who is logged in (before route binding
+        // Row-level security: the moment Laravel knows who is logged in
         // looks up a reservation), tell PostgreSQL, so its policies can filter rows.
         Event::listen(Authenticated::class, function (Authenticated $event) {
             DB::select("select set_config('app.user_id', ?, false)", [(string) $event->user->getAuthIdentifier()]);

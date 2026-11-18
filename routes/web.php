@@ -8,18 +8,17 @@ use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\VenueController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [VenueController::class, 'index'])->name('home');
+Route::get('/', [VenueController::class, 'index'])->name('home'); //Anyone can open it
 
-Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified'])->name('dashboard'); //users
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth')->group(function () { 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 // Venues: owners and admins manage them. This group must come BEFORE the public
-// routes, otherwise /venues/create would be read as /venues/{venue}.
 Route::middleware(['auth', 'role:owner,admin'])->group(function () {
     Route::resource('venues', VenueController::class)->except(['index', 'show']);
 });
@@ -46,7 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy'])->name('reservations.destroy');
 });
 
-Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () { 
     Route::get('/', AdminAreaController::class)->name('admin.index');
 });
 

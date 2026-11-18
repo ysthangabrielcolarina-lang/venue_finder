@@ -8,7 +8,6 @@
         </div>
     @endif
 
-    {{-- Brand and account --}}
     <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <a href="{{ route('home') }}" class="flex items-center gap-2">
             <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-semibold text-white">VF</span>
@@ -29,7 +28,6 @@
         </div>
     </div>
 
-    {{-- Button row: the page you are on is filled in --}}
     @if ($buttons)
         <div class="border-t border-gray-100 bg-gray-50">
             <div class="max-w-6xl mx-auto px-4 py-2 flex flex-wrap items-center gap-2">

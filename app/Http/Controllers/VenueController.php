@@ -13,6 +13,8 @@ class VenueController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $filters = [
             'q' => $request->string('q')->trim()->toString(),
             'barangay' => $request->string('barangay')->toString(),
@@ -35,8 +37,12 @@ class VenueController extends Controller
 
         // withCount('owners') adds an owners_count number to each venue in one query.
         // The list uses it to decide which venues can be reserved.
+        // An owner only sees the venues they own. Visitors, customers and admins see all of them.
         $venues = Venue::with('barangay')
             ->withCount('owners')
+            ->when($user?->role === 'owner', function ($query) use ($user) {
+                $query->whereHas('owners', fn ($owners) => $owners->where('users.id', $user->id));
+            })
             ->search($filters)
             ->orderBy($column, $direction)
             ->paginate(9)
@@ -50,8 +56,15 @@ class VenueController extends Controller
         ]);
     }
 
-    public function show(Venue $venue)
+    public function show(Request $request, Venue $venue)
     {
+        $user = $request->user();
+
+        // An owner cannot open another owner's venue by typing its address.
+        if ($user?->role === 'owner' && ! $venue->owners()->where('users.id', $user->id)->exists()) {
+            abort(403, 'You can only view your own venues.');
+        }
+
         $venue->load(['barangay', 'amenities'])->loadCount('owners');
 
         return view('venues.show', compact('venue'));
