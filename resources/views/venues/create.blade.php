@@ -1,5 +1,9 @@
 <x-layouts.public title="Add a venue">
-    <a href="{{ route('venues.index') }}" class="text-sm text-gray-600 hover:text-indigo-700">&larr; Back to venues</a>
+    @if (auth()->user()?->isOwner())
+        <a href="{{ route('owner.index') }}" class="text-sm text-gray-600 hover:text-indigo-700">&larr; Back to my venues</a>
+    @else
+        <a href="{{ route('venues.index') }}" class="text-sm text-gray-600 hover:text-indigo-700">&larr; Back to venues</a>
+    @endif
 
     <h1 class="mt-3 text-2xl font-semibold">Add a venue</h1>
     <p class="mt-1 text-gray-600">Fill in the details. Customers will see this on the venue list.</p>
@@ -82,7 +86,7 @@
             <button type="submit" class="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700">
                 Save venue
             </button>
-            <a href="{{ route('venues.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
+            <a href="{{ auth()->user()->isOwner() ? route('owner.index') : route('venues.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Cancel</a>
         </div>
     </form>
 </x-layouts.public>

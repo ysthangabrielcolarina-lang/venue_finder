@@ -39,8 +39,12 @@ class NavigationComposer
         // Each item: [label, address, route names that mean "you are here"]
         $items = [
             ['Dashboard', route('dashboard'), ['dashboard']],
-            ['Venues', route('venues.index'), ['venues.*']],
         ];
+
+        // Owners only manage their own venues, so they don't get the full venue list.
+        if (! $user->isOwner()) {
+            $items[] = ['Venues', route('venues.index'), ['venues.*']];
+        }
 
         if ($user->isCustomer()) {
             $items[] = ['My reservations', route('reservations.index'), ['reservations.*']];

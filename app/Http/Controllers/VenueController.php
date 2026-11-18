@@ -127,6 +127,9 @@ class VenueController extends Controller
 
         $venue->delete();
 
-        return redirect()->route('venues.index')->with('status', 'Venue deleted.');
+        // Owners go back to their own area, not the full venue list.
+        $back = auth()->user()->isOwner() ? 'owner.index' : 'venues.index';
+
+        return redirect()->route($back)->with('status', 'Venue deleted.');
     }
 }

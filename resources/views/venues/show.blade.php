@@ -1,5 +1,9 @@
 <x-layouts.public :title="$venue->name">
-    <a href="{{ route('venues.index') }}" class="text-sm text-gray-600 hover:text-indigo-700">&larr; All venues</a>
+    @if (auth()->user()?->isOwner())
+        <a href="{{ route('owner.index') }}" class="text-sm text-gray-600 hover:text-indigo-700">&larr; My venues</a>
+    @else
+        <a href="{{ route('venues.index') }}" class="text-sm text-gray-600 hover:text-indigo-700">&larr; All venues</a>
+    @endif
 
     <div class="mt-4 grid gap-8 lg:grid-cols-3">
         <div class="space-y-8 lg:col-span-2">
